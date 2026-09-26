@@ -1,4 +1,4 @@
-# LinkedIn Content Studio
+# SocialMedia Content Studio
 
 A local, human-reviewed content pipeline built with CrewAI, Groq, Serper, FastAPI, and Pillow. It researches a topic, writes a LinkedIn post, renders a 1080×1080 infographic, routes targeted revision feedback, and publishes only after a separate confirmation.
 
