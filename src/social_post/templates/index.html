@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}New post · LinkedIn Content Studio{% endblock %}
+{% block content %}
+  <section class="hero">
+    <p class="eyebrow">Human-reviewed content pipeline</p>
+    <h1>Turn one idea into a sourced LinkedIn post and infographic.</h1>
+    <p class="lede">The workflow stops for ambiguous topics, preserves sources for review, and never publishes without a separate confirmation.</p>
+  </section>
+
+  {% if not generation_ready %}
+    <div class="notice warning">
+      Live generation is disabled. Add <code>GROQ_API_KEY</code> and <code>SERPER_API_KEY</code> to <code>.env</code>, then restart.
+    </div>
+  {% endif %}
+
+  <section class="panel compose-panel">
+    <h2>Create a workflow</h2>
+    <form method="post" action="/workflows" class="stack">
+      <label>
+        Idea or topic
+        <textarea name="idea" required minlength="3" rows="3" placeholder="Difference between RAG and OKF"></textarea>
+      </label>
+      <div class="two-fields">
+        <label>
+          Audience
+          <input name="audience" value="Technology professionals and business leaders" required>
+        </label>
+        <label>
+          Optional context
+          <input name="context" placeholder="My perspective, product, or experience">
+        </label>
+      </div>
+      <button class="button primary" type="submit" {% if not generation_ready %}disabled{% endif %}>Research and draft</button>
+    </form>
+  </section>
+
+  <section class="section-heading">
+    <div>
+      <p class="eyebrow">Recent</p>
+      <h2>Workflows</h2>
+    </div>
+    <div class="connection {% if linkedin.connected %}connected{% endif %}">
+      {% if linkedin.connected %}
+        LinkedIn connected{% if linkedin.name %} as {{ linkedin.name }}{% endif %}
+      {% elif linkedin.configured %}
+        <a href="/auth/linkedin/start">Connect LinkedIn</a>
+      {% else %}
+        LinkedIn credentials not configured
+      {% endif %}
+    </div>
+  </section>
+
+  <div class="workflow-list">
+    {% for item in workflows %}
+      <a class="workflow-card" href="/workflows/{{ item.id }}">
+        <span class="status status-{{ item.status.value }}">{{ item.status.value.replace('_', ' ') }}</span>
+        <strong>{{ item.request.original_idea }}</strong>
+        <small>Revision {{ item.revision }} · {{ item.updated_at.strftime('%d %b %Y, %H:%M') }}</small>
+      </a>
+    {% else %}
+      <div class="empty">No workflows yet. Your first one will appear here.</div>
+    {% endfor %}
+  </div>
+{% endblock %}
+

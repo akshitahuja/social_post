@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "social_post"
+version = "0.1.0"
+description = "Human-reviewed CrewAI pipeline for researched LinkedIn posts and infographics"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "crewai[litellm]>=1.15,<1.16",
+  "crewai-tools>=1.15,<1.16",
+  "fastapi>=0.115",
+  "httpx>=0.28",
+  "jinja2>=3.1",
+  "json-repair>=0.60",
+  "pillow>=11",
+  "pydantic-settings>=2.7",
+  "python-multipart>=0.0.20",
+  "uvicorn[standard]>=0.34",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3",
+  "pytest-cov>=6",
+]
+
+[project.scripts]
+social_post = "social_post.app:run"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/social_post"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

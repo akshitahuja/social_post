@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}{{ state.request.original_idea }} · LinkedIn Content Studio{% endblock %}
+{% block content %}
+  <div class="workflow-head">
+    <div>
+      <a class="back" href="/">← All workflows</a>
+      <h1>{{ state.request.original_idea }}</h1>
+      <p>{{ state.request.audience }}</p>
+    </div>
+    <span class="status large status-{{ state.status.value }}">{{ state.status.value.replace('_', ' ') }}</span>
+  </div>
+
+  {% if state.error %}
+    <div class="notice error"><strong>Action needed:</strong> {{ state.error }}</div>
+  {% endif %}
+
+  {% if state.is_busy %}
+    <div class="panel progress" data-workflow-id="{{ state.id }}">
+      <span class="spinner"></span>
+      <div><strong>Working on {{ state.status.value.replace('_', ' ') }}…</strong><br><small>This page will update automatically.</small></div>
+    </div>
+    <script>
+      const workflowId = document.querySelector('[data-workflow-id]').dataset.workflowId;
+      const initialStatus = {{ state.status.value | tojson }};
+      const timer = setInterval(async () => {
+        const response = await fetch(`/api/workflows/${workflowId}`);
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!data.is_busy || data.status !== initialStatus) {
+          clearInterval(timer);
+          window.location.reload();
+        }
+      }, 2000);
+    </script>
+  {% endif %}
+
+  {% if state.status.value == 'awaiting_clarification' %}
+    <section class="panel clarification">
+      <p class="eyebrow">Clarification required</p>
+      <h2>{{ state.clarification.reason }}</h2>
+      <form method="post" action="/workflows/{{ state.id }}/clarify" class="stack">
+        {% for option in state.clarification.likely_interpretations %}
+          <label class="radio"><input type="radio" name="interpretation" value="{{ option }}" {% if loop.first %}checked{% endif %}> <span>{{ option }}</span></label>
+        {% endfor %}
+        <label>
+          Or enter the intended topic
+          <input name="custom_interpretation" placeholder="Exact interpretation">
+        </label>
+        <button class="button primary" type="submit">Confirm and research</button>
+      </form>
+    </section>
+  {% endif %}
+
+  {% if state.draft and state.visual %}
+    <div class="review-grid">
+      <section class="panel post-preview">
+        <div class="panel-title"><span>LinkedIn post</span><small>{{ state.draft.character_count }} / 3,000 characters</small></div>
+        <div class="post-copy">{{ state.draft.full_text }}</div>
+      </section>
+      <section class="panel image-preview">
+        <div class="panel-title"><span>Infographic</span><small>1080 × 1080 PNG</small></div>
+        <img src="/workflows/{{ state.id }}/image?v={{ state.revision }}" alt="{{ state.visual.alt_text }}">
+        <p class="alt-text"><strong>Alt text:</strong> {{ state.visual.alt_text }}</p>
+      </section>
+    </div>
+  {% endif %}
+
+  {% if state.status.value == 'awaiting_review' %}
+    <section class="panel review-actions">
+      <div class="panel-title"><span>Review revision {{ state.revision }}</span><small>Only the selected artifact will be changed.</small></div>
+      <form method="post" action="/workflows/{{ state.id }}/review" class="stack">
+        <input type="hidden" name="revision" value="{{ state.revision }}">
+        <label>
+          Revision feedback
+          <textarea name="feedback" rows="3" placeholder="Make the hook more concrete, simplify the right column…"></textarea>
+        </label>
+        <div class="button-row">
+          <button class="button secondary" name="action" value="revise_content">Revise content</button>
+          <button class="button secondary" name="action" value="revise_image">Revise image</button>
+          <button class="button secondary" name="action" value="revise_both">Revise both</button>
+          <button class="button primary" name="action" value="approve">Approve revision</button>
+          <button class="button danger" name="action" value="cancel">Cancel</button>
+        </div>
+      </form>
+    </section>
+  {% endif %}
+
+  {% if state.status.value == 'approved' %}
+    <section class="panel publish-panel">
+      <p class="eyebrow">Approved revision {{ state.approved_revision }}</p>
+      <h2>Ready for the separate publishing step.</h2>
+      {% if linkedin.connected %}
+        <form method="post" action="/workflows/{{ state.id }}/publish">
+          <button class="button publish" type="submit">Publish to LinkedIn</button>
+        </form>
+      {% elif linkedin.configured %}
+        <a class="button primary" href="/auth/linkedin/start?return_to=/workflows/{{ state.id }}">Connect LinkedIn</a>
+      {% else %}
+        <p>Add your LinkedIn developer app credentials to <code>.env</code> to enable publishing. The approved text and PNG remain available here.</p>
+      {% endif %}
+    </section>
+  {% endif %}
+
+  {% if state.publish_result %}
+    <section class="notice success">
+      <strong>Published successfully.</strong> Post URN: <code>{{ state.publish_result.post_urn }}</code>
+    </section>
+  {% endif %}
+
+  {% if state.research %}
+    <section class="panel research-panel">
+      <div class="panel-title"><span>Research and verification</span><small>Sources stay out of the post body.</small></div>
+      <p>{{ state.research.summary }}</p>
+      {% if state.research.claims %}
+        <h3>Supported claims</h3>
+        <ul class="claims">
+          {% for claim in state.research.claims %}
+            <li>{{ claim.claim }}{% if claim.time_sensitive %} <span class="time-sensitive">time-sensitive</span>{% endif %}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+      <h3>Sources</h3>
+      <ol class="sources">
+        {% for source in state.research.sources %}
+          <li><a href="{{ source.url }}" target="_blank" rel="noreferrer">{{ source.title }}</a>{% if source.publisher %} — {{ source.publisher }}{% endif %}</li>
+        {% endfor %}
+      </ol>
+    </section>
+  {% endif %}
+
+  {% if state.feedback_history %}
+    <section class="panel history-panel">
+      <div class="panel-title"><span>Review history</span><small>{{ state.feedback_history | length }} decisions</small></div>
+      {% for decision in state.feedback_history | reverse %}
+        <div class="history-row"><strong>{{ decision.action.value.replace('_', ' ') }}</strong><span>Revision {{ decision.revision }}</span><p>{{ decision.feedback or 'No written feedback' }}</p></div>
+      {% endfor %}
+    </section>
+  {% endif %}
+{% endblock %}
